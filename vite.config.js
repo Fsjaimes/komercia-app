@@ -12,6 +12,7 @@ export default defineConfig({
         laravel({
             input: [
                 'resources/js/app.js',
+                'resources/js/ziggy.js',
             ],
             refresh: true,
         }),
