@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Product;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
@@ -24,27 +25,38 @@ class ProductController extends Controller
         //     $filters['today'] = true;
         // }
 
-        $products = $this->paginate($filters, $page, $perPage);
+        $productos = $this->listarProductos();
 
         $view = $isMobile ? 'Products/Mobile/Index' : 'Products/Index';
 
         return Inertia::render($view, [
-            'products' => $products['data'],
-            'total' => $products['total'],
-            'filters' => $filters,
+            'productos' => $productos,
         ]);
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'code' => 'required|string|max:50|unique:products,code',
-            'name' => 'required|string|max:255',
-            'status' => 'required|boolean',
-            'remarks' => 'nullable|string|max:500',
-        ]);
+        // $validated = $request->validate([
+        //     'code' => 'required|string|max:50|unique:products,code',
+        //     'name' => 'required|string|max:255',
+        //     'status' => 'required|boolean',
+        //     'remarks' => 'nullable|string|max:500',
+        // ]);
 
-        $product = Product::create($validated);
+        $userId = "1";
+
+        $data = [
+            "codigo" => $request->codigo,
+            "nombre" => $request->nombre,
+            "observaciones" => $request->observaciones ?? null,
+            "estado" => $request->estado,
+            "created_at" => now(),
+            "updated_at" => now(),
+            "id_usuario_crea" => $userId,
+            "id_usuario_modifica" => $userId,
+        ];
+
+        $product = Product::create($data);
 
         return response()->json([
             'success' => true,

@@ -12,7 +12,7 @@ const { showAlert, showConfirm } = useAlert();
 const { fetchPetition } = useFetchPetition();
 
 export default {
-    name: 'ProductsIndex',
+    name: 'productosIndex',
     components: {
         // Layout,
         PageHeader,
@@ -21,34 +21,29 @@ export default {
     data() {
         return {
             searchQuery: '',
-            products: [],
+            productos: [],
+            mostrarModalProductos: false,
+            form: {
+                codigo: '',
+                nombre: '',
+                observaciones: '',
+                estado: true,
+            },
         }
     },
     // props: {
-    //     products: {
+    //     productos: {
     //         type: Object,
     //         required: true,
     //         default: () => ({ data: [], meta: { total: 0 } })
     //     }
     // },
     computed: {
-        // filteredProducts() {
-        //     const productsList = this.products.data || [];
-        //     const query = this.searchQuery.trim().toLowerCase();
-        //     if (!query) {
-        //         return productsList; // si está vacío, devuelve todo
-        //     }
-        //     return productsList.filter(yard =>
-        //         yard.code?.toLowerCase().includes(query) ||
-        //         yard.name?.toLowerCase().includes(query) ||
-        //         yard.description?.toLowerCase().includes(query)
-        //     );
-        // },
         tableHeaders() {
             return [
-                { label: 'Código', key: 'code' },
-                { label: 'Nombre', key: 'name' },
-                { label: 'Estado', key: 'status' },
+                { label: 'Código', key: 'codigo' },
+                { label: 'Nombre', key: 'nombre' },
+                { label: 'Estado', key: 'estado' },
                 { label: 'Acciones', key: 'acciones' },
             ]
         },
@@ -80,37 +75,76 @@ export default {
                 method: 'GET'
             });
             if (response.ok) {
-                    console.log('Productos listados:', response);
-                    this.products = response.data?.data;
+                    console.log('Productos listados:', response.data);
+                    this.productos = response.data?.data;
                 } else {
                     showAlert('error', 'Error', 'No se pudieron listar los productos', 2000);
                 }
         },
 
-        async deleteYard(id) {
+        async aliminarProducto(id) {
             try {
                 const confirmed = await showConfirm(
                     'warning',
                     '¡Alerta!',
-                    '¿Está seguro que desea eliminar el patio?',
+                    '¿Está seguro que desea eliminar el producto?',
                     'Sí, eliminar'
                 );
                 if (!confirmed) return;
-                const response = await fetchPetition(`/api/products/${id}`, {
+                const response = await fetchPetition(`/productos/${id}`, {
                     method: 'DELETE'
                 });
                 if (response.ok) {
-                    showAlert('success', '¡Éxito!', 'El patio ha sido eliminado correctamente', 1500);
-                    window.location.reload(); // o router.visit('/patios') si usas Inertia
+                    showAlert('success', '¡Éxito!', 'El producto ha sido eliminado correctamente', 1500);
+                    this.ListarProductos();
                 } else {
-                    console.warn('Error al eliminar patio:', response.status, response.data);
-                    showAlert('error', 'Error', 'Error al eliminar el patio', 2000);
+                    console.warn('Error al eliminar producto:', response.status, response.data);
+                    showAlert('error', 'Error', 'Error al eliminar el producto', 2000);
                 }
             } catch (error) {
                 console.error('Error:', error);
-                showAlert('error', 'Error inesperado', 'Ocurrió un problema al eliminar el patio', 2000);
+                showAlert('error', 'Error inesperado', 'Ocurrió un problema al eliminar el producto', 2000);
             }
         },
+
+        async GuardarProducto() {
+            const form = this.form;
+            form.estado = this.form.estado ? 1 : 0;
+            try {
+                const response = await fetchPetition(`/productos`, {
+                    method: 'POST',
+                    body: form,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (response.ok) {
+                    showAlert('success', '¡Éxito!', 'El producto ha sido guardado correctamente', 1500);
+                    this.ListarProductos();
+                    this.cerarModalProducto();
+                } else {
+                    console.warn('Error al guardar producto:', response.status, response.data);
+                    showAlert('error', 'Error', 'Error al guardar el producto', 2000);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('error', 'Error inesperado', 'Ocurrió un problema al guardar el producto', 2000);
+            }
+        },
+
+        mostrarModalProducto() {
+            this.mostrarModalProductos = true;
+        },
+
+        cerarModalProducto(){
+            this.mostrarModalProductos = false;
+            this.form = {
+                codigo: '',
+                nombre: '',
+                observaciones: '',
+                estado: true,
+            };
+        }
     }
 }
 </script>
@@ -130,8 +164,8 @@ export default {
                             </div>
                             <div class="col-sm-auto">
                                 <div class="d-flex flex-wrap align-items-start gap-2">
-                                    <!-- <a :href="route('products.create')" class="btn btn-success add-btn"> -->
-                                    <a href="products.create" class="btn btn-success add-btn">
+                                    <!-- <a :href="route('productos.create')" class="btn btn-success add-btn"> -->
+                                    <a class="btn btn-success add-btn" @click="mostrarModalProducto()">
                                         <i class="ri-add-line align-bottom me-1"></i> Nuevo
                                     </a>
                                 </div>
@@ -154,9 +188,9 @@ export default {
                         <div>
                             <!-- Tabla reutilizable -->
                             <DataTable
-                                id="tabla-products"
+                                id="tabla-productos"
                                 :headers="tableHeaders"
-                                :items="products"
+                                :items="productos"
                                 :page-length="20"
                                 order-by="code"
                             >
@@ -171,12 +205,12 @@ export default {
                                 <!-- <template #cell-acciones="{ item }">
                                     <ul class="list-inline hstack gap-2 mb-0">
                                         <li class="list-inline-item">
-                                            <a :href="`/products/${item.id}/show`" class="text-primary" title="Ver" @click="showYard(item.id)">
+                                            <a :href="`/productos/${item.id}/show`" class="text-primary" title="Ver" @click="showYard(item.id)">
                                                 <i class="ri-eye-fill fs-16"></i>
                                             </a>
                                         </li>
                                         <li class="list-inline-item edit">
-                                            <a :href="`/products/${item.id}/edit`" class="text-primary" title="Editar">
+                                            <a :href="`/productos/${item.id}/edit`" class="text-primary" title="Editar">
                                                 <i class="ri-pencil-fill fs-16"></i>
                                             </a>
                                         </li>
@@ -189,6 +223,58 @@ export default {
                                 </template> -->
                             </DataTable>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div v-if="mostrarModalProductos" id="modalProductos" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0, 0, 0, 0.5);">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header p-3 bg-light">
+                        <h5 class="modal-title">Producto</h5>
+                        <button type="button" class="btn-close" @click="cerarModalProducto()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div>
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    <label class="form-label">Código</label>
+                                    <input type="text" v-model="form.codigo" class="form-control" placeholder="Ingrese Código">
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label class="form-label">Nombre</label>
+                                    <input type="text" v-model="form.nombre" class="form-control" placeholder="Ingrese Nombre">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <label class="form-label">Observaciones</label>
+                                    <textarea class="form-control" v-model="form.observaciones" rows="3" placeholder="Ingrese Observaciones"></textarea>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <label class="form-label">Estado</label>
+                                    <div class="form-check form-switch form-switch-md" dir="ltr">
+                                        <input
+                                            v-model="form.estado"
+                                            type="checkbox"
+                                            class="form-check-input"
+                                            id="customSwitchsizesm"
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" @click="cerarModalProducto()">Cancelar</button>
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            @click="GuardarProducto()"
+                        >Guardar
+                        </button>
                     </div>
                 </div>
             </div>
