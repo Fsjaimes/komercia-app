@@ -10,9 +10,7 @@
   <link rel="icon" href="{{asset('/images/brand-logos/komercia-header.png')}}" style="width: 50px; height: 50px;">
   <!-- ICONS CSS -->
   <link href="{{asset('/icon-fonts/icons.css')}}" rel="stylesheet">
-
-  @routes
-
+  <!--@routes-->
   @vite(['resources/js/app.js'])
   @inertiaHead
 

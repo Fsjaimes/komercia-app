@@ -6,9 +6,6 @@ import { createInertiaApp } from '@inertiajs/vue3';
 import maindashboard from '@/layouts/maindashboard.vue';
 import plugins from './plugins';
 
-import { ZiggyVue } from 'ziggy-js';
-import { Ziggy } from './ziggy';
-
 import '../css/app.scss'
 import '../css/scss/switcher.scss'
 import '@mdi/font/css/materialdesignicons.css';
@@ -44,7 +41,6 @@ createInertiaApp({
         createApp({ render: () => h(App, props) })
             .use(plugin)
             .use(plugins)
-            .use(ZiggyVue, Ziggy)
             .mount(el);
     },
 });
