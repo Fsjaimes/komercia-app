@@ -6,52 +6,122 @@
  */
 export function useFetchPetition() {
     /**
-     * Ejecuta una petición fetch con manejo básico de JSON y errores.
+     * Composable para realizar peticiones HTTP con fetch() y soporte completo para
+     * CSRF de Laravel (Sanctum/Fortify).
      *
+     * - Regenera el token CSRF automáticamente para POST/PUT/PATCH/DELETE.
+     * - Obtiene el token XSRF-TOKEN desde la cookie.
+     * - Maneja JSON seguro en respuestas.
      * @param {string} url - Endpoint del backend (ej: '/api/yards')
      * @param {object} options - Configuración: { method, body, headers }
      * @returns {Promise<{ data: any, ok: boolean, status: number|null, error: Error|null }>}
-     */
+     **/
+
+    // --------------------------------------------------
+    // Obtener el token desde la cookie XSRF-TOKEN (NO desde meta)
+    // --------------------------------------------------
+    const getXsrfToken = () => {
+        const cookie = document.cookie
+            .split("; ")
+            .find(row => row.startsWith("XSRF-TOKEN="));
+
+        return cookie ? decodeURIComponent(cookie.split("=")[1]) : "";
+    };
+
+    // --------------------------------------------------
+    // Peticiones JSON
+    // --------------------------------------------------
     const fetchPetition = async (url, options = {}) => {
         const {
-            method = 'GET',
+            method = "GET",
             body = null,
             headers = {},
         } = options;
 
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        // Métodos que requieren un token CSRF actualizado
+        const requiresCsrf = ["POST", "PUT", "PATCH", "DELETE"].includes(method.toUpperCase());
+
+        if (requiresCsrf) {
+            await fetch("/sanctum/csrf-cookie", {
+                credentials: "same-origin",
+            });
+        }
 
         const defaultHeaders = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': csrfToken,
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            "X-XSRF-TOKEN": getXsrfToken(),
         };
 
         try {
             const response = await fetch(url, {
                 method,
                 headers: { ...defaultHeaders, ...headers },
+                credentials: "same-origin", // Necesario para enviar cookies de sesión
                 body: body ? JSON.stringify(body) : null,
-                credentials: 'same-origin', //Enviar cookies de sesión Fortify
             });
 
             const status = response.status;
             const ok = response.ok;
-            let data = null;
 
+            let data = null;
             try {
                 data = await response.json();
             } catch {
-                data = null; // si no es JSON (por ejemplo, DELETE 204)
+                // Respuestas vacías (ej: DELETE 204)
+                data = null;
             }
 
-            return { data, ok, status, error: null };
+            return { ok, status, data, error: null };
+
         } catch (error) {
-            console.error('❌ Fetch Error:', error);
-            return { data: null, ok: false, status: null, error };
+            console.error("❌ Fetch Error:", error);
+            return { ok: false, status: null, data: null, error };
         }
     };
 
-    return { fetchPetition };
+    // --------------------------------------------------
+    // Subida de archivos (FormData)
+    // --------------------------------------------------
+    const uploadFile = async (url, formData, method = "POST") => {
+
+        // Regenerar CSRF antes de subir archivo
+        await fetch("/sanctum/csrf-cookie", {
+            credentials: "same-origin",
+        });
+
+        try {
+            const response = await fetch(url, {
+                method,
+                credentials: "same-origin",
+                body: formData, // importante: enviar tal cual
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest",
+                    "X-XSRF-TOKEN": getXsrfToken(),
+                    // ⚠ NO agregar Content-Type → lo hace el navegador con boundary
+                },
+            });
+
+            let data = null;
+            try {
+                data = await response.json();
+            } catch {
+                data = null;
+            }
+
+            return {
+                ok: response.ok,
+                status: response.status,
+                data,
+                error: null
+            };
+
+        } catch (error) {
+            console.error("❌ File Upload Error:", error);
+            return { ok: false, status: null, data: null, error };
+        }
+    };
+
+    return { fetchPetition, uploadFile };
 }
